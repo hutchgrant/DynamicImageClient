@@ -10,6 +10,8 @@ import com.google.gson.GsonBuilder;
 import com.google.appengine.api.images.ServingUrlOptions;
 import java.io.IOException;
 import java.io.PrintWriter;
+
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -17,10 +19,10 @@ import javax.servlet.http.HttpServletResponse;
 @SuppressWarnings("serial")
 public class Client extends HttpServlet {
 	final String bucket = "your-bucket-name";
-
+	
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-
+		setAccessControlHeaders(resp);
 		ImagesService imagesService = ImagesServiceFactory.getImagesService();
 
 		BlobstoreService blobstoreService = BlobstoreServiceFactory.getBlobstoreService();
@@ -51,23 +53,31 @@ public class Client extends HttpServlet {
 
 	@Override
 	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		setAccessControlHeaders(resp);
 
 		ImagesService imagesService = ImagesServiceFactory.getImagesService();
+		resp.setContentType("application/json");
+		resp.setCharacterEncoding("utf-8");
+		PrintWriter out = resp.getWriter();
 
 		if (req.getQueryString() != null) {
-
 			BlobKey key = new BlobKey(req.getParameter("key"));
 			imagesService.deleteServingUrl(key);
-
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("utf-8");
-			PrintWriter out = resp.getWriter();
-			out.print("{ status: 'success' }");
-			out.flush();
+			out.print("{\"status\": \"success\" }");
 		} else {
-			resp.setContentType("application/json");
-			resp.setCharacterEncoding("utf-8");
-			resp.getWriter().println("{ error: 'invalid parameters, check your query and try again'}");
+			out.print("{ \"status\": \"fail\", \"error\": \"invalid parameters, check your query and try again\"}");
 		}
+		out.flush();
+	}
+
+	@Override
+	protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		setAccessControlHeaders(resp);
+		resp.setStatus(HttpServletResponse.SC_OK);
+	}
+
+	private void setAccessControlHeaders(HttpServletResponse resp) {
+		resp.setHeader("Access-Control-Allow-Origin", "*");
+		resp.setHeader("Access-Control-Allow-Methods", "DELETE, GET");
 	}
 }
